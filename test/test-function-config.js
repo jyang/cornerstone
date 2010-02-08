@@ -6,6 +6,6 @@ var config = {a: 1};
 function f() {
   assert.equal(config, this, 'f config not bound correctly');
 };
-f = cornerstone.util.bind(f, config);
+f = f.bind(config);
 
 f();

@@ -7,7 +7,7 @@ var error = {
   SUBCLASS_RESPONSIBILITY: 'subclass responsibility'
 };
 
-// ------------------
+// ---------------------
 // handlePathPrefixArray
 
 /**
@@ -16,8 +16,8 @@ var error = {
  */
 function handlePathPrefixArray(request) {
   if (request && request.input && request.input.path) {
-    for (var i = 0; i < this.length; i++) {
-      var pathHandler = this[i];
+    for (var i = 0; i < this.pathHandlers.length; i++) {
+      var pathHandler = this.pathHandlers[i];
       var pathPrefix = pathHandler[0];
       var handler = pathHandler[1];
       if (request.input.path.indexOf(pathPrefix) == 0 &&
@@ -38,7 +38,7 @@ function handlePathPrefixArray(request) {
  * @param pathHandlers e.g. [['/abc', handler1], ['/', handler2]]
  */
 handlePathPrefixArray.create = function(pathHandlers) {
-  return bind(handlePathPrefixArray, pathHandlers);
+  return handlePathPrefixArray.bind({pathHandlers: pathHandlers});
 };
 
 // -----
@@ -66,11 +66,12 @@ createChain = function(handlers) {
 // -----------
 // cornerstone
 
-function bind(fn, selfObj, var_args) {
+Function.prototype.bind = function(selfObj, var_args) {
+  var fn = this;
   var context = selfObj || process;
 
-  if (arguments.length > 2) {
-    var boundArgs = Array.prototype.slice.call(arguments, 2);
+  if (arguments.length > 1) {
+    var boundArgs = Array.prototype.slice.call(arguments, 1);
     return function() {
       // Prepend the bound arguments to the current arguments.
       var newArgs = Array.prototype.slice.call(arguments);
@@ -117,10 +118,6 @@ createNodeServer = function(rootHandler, port, opt_host) {
 // exports
 
 exports.error = error;
-
-exports.util = {
-  bind: bind
-};
 
 exports.handler = {
   dumpRequestResponse: dumpRequestResponse,
