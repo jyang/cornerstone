@@ -146,7 +146,7 @@ function dumpResponse(response) {
 startHandler = function(handler, port, opt_host) {
   http.createServer(function(request, response) {
     var chain = createHandlerChain([
-      createAroundInterceptor(/* handleNodeRequest */ function(request) {
+      createBeforeInterceptor(function(request) {
         var requestUrl = require('url').parse(request.url, true);
         return {
           header: request.headers,
@@ -156,21 +156,16 @@ startHandler = function(handler, port, opt_host) {
           __request: request,
           __response: response
         };
-      }, /* handleNodeResponse */ function(responseMessage) {
-        delete responseMessage.__request;
-        delete responseMessage.__response;
-        log('responseMessage=' + sys.inspect(responseMessage));
-
-        response.sendHeader(responseMessage.status,
-            {'Content-Type': responseMessage.contentType || 'text/plain'});
-        response.sendBody(responseMessage.output.body);
-        response.finish();
-
-        return responseMessage;
       }),
       handler
     ]);
-    chain(request, function() {});
+
+    chain(request, function(responseMessage) {
+      response.sendHeader(responseMessage.status,
+          {'Content-Type': responseMessage.contentType || 'text/plain'});
+      response.sendBody(responseMessage.output.body);
+      response.finish();
+    });
   }).listen(port, opt_host);
 };
 
