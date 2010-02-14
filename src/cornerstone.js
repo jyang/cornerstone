@@ -42,30 +42,52 @@ handlePathPrefixArray.create = function(pathPrefixHandlers) {
   return handlePathPrefixArray.bind({pathPrefixHandlers: pathPrefixHandlers});
 };
 
-// -----
-// Chain
+// --------
+// handlers
 
 /**
  * Creates a handler equivalent to calling all handlers in sequence.
  * @param {Object} handlers Handlers out of which to create chain of handlers
  */
-createChain = function(handlers) {
+createHandlerChain = function(handlers) {
   if (handlers.length == 0) {
-    throw new Error('empty handlers');
+    throw new Error('no handlers');
   } else if (handlers.length == 1) {
     return handlers[0];
   } else {
-    var chainedHandler = [];
-    chainedHandler[handlers.length - 1] = handlers[handlers.length - 1];
+    var intercepted = [];
+    intercepted[handlers.length - 1] = handlers[handlers.length - 1];
     for (var i = handlers.length - 2; i >= 0; i--) {
-      chainedHandler[i] = (function(i) {
-        return function(request) {
-          return handlers[i](request, chainedHandler[i + 1]);
+      intercepted[i] = (function(i) {
+        return function(request, handleResponse) {
+          return handlers[i](request, handleResponse, intercepted[i + 1]);
         }
       })(i);
     }
-    return chainedHandler[0];
+    return intercepted[0];
   }
+};
+
+createAroundInterceptor = function(before, after) {
+  return function(request, handleResponse, intercepted) {
+    intercepted(before(request), function(response) {
+      handleResponse(after(response));
+    });
+  };
+};
+
+createBeforeInterceptor = function(before) {
+  return function(request, handleResponse, intercepted) {
+    intercepted(before(request), handleResponse);
+  };
+};
+
+createAfterInterceptor = function(after) {
+  return function(request, handleResponse, intercepted) {
+    intercepted(request, function(response) {
+      handleResponse(after(response));
+    });
+  };
 };
 
 // -----------
@@ -162,7 +184,13 @@ exports.error = error;
 exports.handler = {
   dumpRequestResponse: dumpRequestResponse,
   handlePathPrefixArray: handlePathPrefixArray,
-  createChain: createChain
+  chain: createHandlerChain
+};
+
+exports.interceptor = {
+  around: createAroundInterceptor,
+  before: createBeforeInterceptor,
+  after: createAfterInterceptor
 };
 
 exports.server = {
