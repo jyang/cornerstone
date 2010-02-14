@@ -24,6 +24,8 @@ message.input.body
 message.output
 message.output.body
 message.status
+message.__request
+message.__response
 
 MESSAGE HANDLER (Function)
 
