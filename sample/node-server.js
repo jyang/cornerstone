@@ -10,7 +10,7 @@ function echoPath(request, handleResponse) {
 	});
 };
 
-csf.server.start([
+csf.server.startPathHandlers([
   ['/hello', echoPath],
 	['/world', echoPath]
 ], 8000);

@@ -14,7 +14,7 @@ var error = {
  * Resolves handler by looking up a path handler map.
  * this.pathPrefixHandlers
  */
-function handlePathPrefixArray(request) {
+function handlePathPrefixArray(request, handleResponse) {
   if (request && request.input && request.input.path) {
     for (var i = 0; i < this.pathPrefixHandlers.length; i++) {
       var pathPrefixHandler = this.pathPrefixHandlers[i];
@@ -25,12 +25,12 @@ function handlePathPrefixArray(request) {
               request.input.path.charAt(pathPrefix.length) == '/')) {
         // path is proper prefix of request URL
         var handler = pathPrefixHandler[1];
-        return handler(request);
+        handler(request, handleResponse);
       }
     };
   }
 
-  return {output: {body: 'resource not found'}, status: 404};
+  handleResponse({output: {body: 'resource not found'}, status: 404});
 };
 
 /**
@@ -130,11 +130,12 @@ function log(message) {
   sys.puts(toIsoDateString(new Date()) + ' ' + message);
 };
 
-function dumpRequestResponse(request, nextHandler) {
+function dumpRequest(request){
   log('request: ' + sys.inspect(request));
+  return request;
+};
 
-  var response = nextHandler(request);
-
+function dumpResponse(response) {
   log('response: ' + sys.inspect(response));
   return response;
 };
@@ -142,23 +143,34 @@ function dumpRequestResponse(request, nextHandler) {
 // ----
 // Node
 
-createNodeServer = function(rootHandler, port, opt_host) {
+startHandler = function(handler, port, opt_host) {
   http.createServer(function(request, response) {
-    var requestUrl = require('url').parse(request.url, true);
-    var requestMessage = {
-      header: request.headers,
-      input: {
-        url: requestUrl, path: requestUrl.pathname, body: request.body
-      },
-      __request: request,
-      __response: response
-    };
+    var chain = createHandlerChain([
+      createAroundInterceptor(/* handleNodeRequest */ function(request) {
+        var requestUrl = require('url').parse(request.url, true);
+        return {
+          header: request.headers,
+          input: {
+            url: requestUrl, path: requestUrl.pathname, body: request.body
+          },
+          __request: request,
+          __response: response
+        };
+      }, /* handleNodeResponse */ function(responseMessage) {
+        delete responseMessage.__request;
+        delete responseMessage.__response;
+        log('responseMessage=' + sys.inspect(responseMessage));
 
-    var responseMessage = rootHandler(requestMessage);
-    response.sendHeader(responseMessage.status,
-        {'Content-Type': responseMessage.contentType || 'text/plain'});
-    response.sendBody(responseMessage.output.body);
-    response.finish();
+        response.sendHeader(responseMessage.status,
+            {'Content-Type': responseMessage.contentType || 'text/plain'});
+        response.sendBody(responseMessage.output.body);
+        response.finish();
+
+        return responseMessage;
+      }),
+      handler
+    ]);
+    chain(request, function() {});
   }).listen(port, opt_host);
 };
 
@@ -168,12 +180,12 @@ createNodeServer = function(rootHandler, port, opt_host) {
  * @param {Object} port
  * @param {Object} opt_host
  */
-start = function(pathPrefixHandlers, port, opt_host) {
-  var rootHandler = createChain([
-      dumpRequestResponse,
+startPathHandlers = function(pathPrefixHandlers, port, opt_host) {
+  var rootHandler = createHandlerChain([
+      createAroundInterceptor(dumpRequest, dumpResponse),
       handlePathPrefixArray.create(pathPrefixHandlers)
   ]);
-  createNodeServer(rootHandler, port, opt_host);
+  startHandler(rootHandler, port, opt_host);
 };
 
 // -------
@@ -182,7 +194,8 @@ start = function(pathPrefixHandlers, port, opt_host) {
 exports.error = error;
 
 exports.handler = {
-  dumpRequestResponse: dumpRequestResponse,
+  dumpRequest: dumpRequest,
+  dumpResponse: dumpResponse,
   handlePathPrefixArray: handlePathPrefixArray,
   chain: createHandlerChain
 };
@@ -194,8 +207,8 @@ exports.interceptor = {
 };
 
 exports.server = {
-  createNodeServer: createNodeServer,
-  start: start
+  startHandler: startHandler,
+  startPathHandlers: startPathHandlers
 };
 
 exports.util = {
