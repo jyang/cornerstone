@@ -143,8 +143,18 @@ function dumpResponse(response) {
 // ----
 // Node
 
+function isBodyUtf8(message) {
+  return message.contentType && messageContentType.indexOf('utf-8') > 0;  
+};
+
+function countUtf8Bytes(s) {
+  return encodeURI(s).replace(/%[0-9,A-F][0-9,A-F]/g, 'a').length;
+};
+
 startHandler = function(handler, port, opt_host) {
   http.createServer(function(request, response) {
+    var start = Date.now();
+
     var chain = createHandlerChain([
       createBeforeInterceptor(function(request) {
         var requestUrl = require('url').parse(request.url, true);
@@ -161,10 +171,27 @@ startHandler = function(handler, port, opt_host) {
     ]);
 
     chain(request, function(responseMessage) {
-      response.sendHeader(responseMessage.status,
-          {'Content-Type': responseMessage.contentType || 'text/plain'});
-      response.sendBody(responseMessage.output.body);
+      var headers = responseMessage.headers || {};
+      headers['Content-Type'] = responseMessage.contentType || 'text/plain';
+      if (responseMessage.output && responseMessage.output.body) {
+        headers['Content-Length'] = isBodyUtf8(responseMessage) ?
+            countUtf8Bytes(responseMessage.output.body) :
+            responseMessage.output.body.length;
+      }
+      response.sendHeader(responseMessage.status, headers);
+
+      if (responseMessage.output && responseMessage.output.body) {
+        if (isBodyUtf8(responseMessage)) {
+          response.sendBody(responseMessage.output.body, 'utf8');
+        } else {
+          response.sendBody(responseMessage.output.body);
+        }
+      }
+
       response.finish();
+
+      var end = Date.now();
+      log('elapsed=' + (end - start) + 'ms');
     });
   }).listen(port, opt_host);
 };

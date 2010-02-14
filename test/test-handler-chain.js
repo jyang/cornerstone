@@ -22,11 +22,22 @@ function echo(request, handleResponse) {
   return handleResponse(request);
 };
 
-var handler = csf.handler.chain([
+var chain = csf.handler.chain([
+  csf.interceptor.around(openA, closeA),
   csf.interceptor.before(openA),
   csf.interceptor.after(closeB),
   echo
 ]);
-handler('world', function(response) {
-  assert.equal('world<a></b>', response);
+chain('world', function(response) {
+  assert.equal('world<a><a></b></a>', response);
+});
+
+var nestedChain = csf.handler.chain([
+  csf.interceptor.around(openA, closeA),
+  csf.interceptor.before(openA),
+  csf.interceptor.after(closeB),
+  chain
+]);
+nestedChain('world', function(response) {
+  assert.equal('world<a><a><a><a></b></a></b></a>', response);
 });

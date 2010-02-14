@@ -36,7 +36,8 @@ var csf = require('../src/cornerstone');
   var handler = [];
   for (var i = 0; i < 3; i++) {
     response[i] = "response" + i;
-    handler[i] = new Function('request', 'return "' + response[i] + '"');
+    handler[i] = new Function('request', 'handleResponse',
+        'handleResponse("' + response[i] + '")');
   }
 
   var pathPrefixHandler = csf.handler.handlePathPrefixArray.create([
@@ -51,8 +52,9 @@ var csf = require('../src/cornerstone');
   ].forEach(function(testRun) {
     var path = testRun[0];
     var expected = testRun[1];
-    var actual = pathPrefixHandler({input: {path: path}});
-    assert.equal(expected, actual, 'path=' + sys.inspect(path) +
-        ' expected=' + sys.inspect(expected) + '; actual=' + sys.inspect(actual));
+    pathPrefixHandler({input: {path: path}}, function(actual) {
+      assert.equal(expected, actual, 'path=' + sys.inspect(path) +
+          ' expected=' + sys.inspect(expected) + '; actual=' + sys.inspect(actual));
+    });
   });
 })();
