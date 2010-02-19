@@ -11,8 +11,6 @@ RESPONSE (Node ServerResponse)
 response.status
 response.headers
 response.body
-response.contentLength
-response.contentType
 
 MESSAGE (Object)
 

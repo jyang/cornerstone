@@ -1,12 +1,6 @@
 var sys = require('sys');
 var http = require('http');
 
-// errors
-
-var error = {
-  SUBCLASS_RESPONSIBILITY: 'subclass responsibility'
-};
-
 // ---------------------
 // handlePathPrefixArray
 
@@ -26,11 +20,13 @@ function handlePathPrefixArray(request, handleResponse) {
         // path is proper prefix of request URL
         var handler = pathPrefixHandler[1];
         handler(request, handleResponse);
+        return;
       }
     };
   }
 
-  handleResponse({output: {body: 'resource not found'}, status: 404});
+  handleResponse(output(404,
+      'no handler for path \'' + request.input.path + '\''));
 };
 
 /**
@@ -140,11 +136,16 @@ function dumpResponse(response) {
   return response;
 };
 
+function output(status, message, opt_headers) {
+  return {output: {body: message}, status: status, headers: opt_headers};
+}
+
 // ----
 // Node
 
 function isBodyUtf8(message) {
-  return message.contentType && messageContentType.indexOf('utf-8') > 0;  
+  var contentType = message.headers ? message.headers['Content-Type'] : null;
+  return contentType && contentType.indexOf('utf-8') > 0;  
 };
 
 function countUtf8Bytes(s) {
@@ -172,7 +173,7 @@ startHandler = function(handler, port, opt_host) {
 
     chain(request, function(responseMessage) {
       var headers = responseMessage.headers || {};
-      headers['Content-Type'] = responseMessage.contentType || 'text/plain';
+      headers['Content-Type'] = headers['Content-Type'] || 'text/plain';
       if (responseMessage.output && responseMessage.output.body) {
         headers['Content-Length'] = isBodyUtf8(responseMessage) ?
             countUtf8Bytes(responseMessage.output.body) :
@@ -182,13 +183,13 @@ startHandler = function(handler, port, opt_host) {
 
       if (responseMessage.output && responseMessage.output.body) {
         if (isBodyUtf8(responseMessage)) {
-          response.sendBody(responseMessage.output.body, 'utf8');
+          response.write(responseMessage.output.body, 'utf8');
         } else {
-          response.sendBody(responseMessage.output.body);
+          response.write(responseMessage.output.body);
         }
       }
 
-      response.finish();
+      response.close();
 
       var end = Date.now();
       log('elapsed=' + (end - start) + 'ms');
@@ -213,8 +214,6 @@ startPathHandlers = function(pathPrefixHandlers, port, opt_host) {
 // -------
 // exports
 
-exports.error = error;
-
 exports.handler = {
   dumpRequest: dumpRequest,
   dumpResponse: dumpResponse,
@@ -234,5 +233,6 @@ exports.server = {
 };
 
 exports.util = {
-  log: log
+  log: log,
+  output: output
 };

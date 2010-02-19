@@ -41,7 +41,9 @@ var csf = require('../src/cornerstone');
   }
 
   var pathPrefixHandler = csf.handler.handlePathPrefixArray.create([
-    ['/abc/123', handler[0]], ['/abc', handler[1]], ['/', handler[2]]
+    ['/abc/123', handler[0]],
+    ['/abc', handler[1]],
+    ['/', handler[2]]
   ]);
 
   [
