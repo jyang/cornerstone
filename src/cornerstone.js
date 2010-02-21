@@ -1,6 +1,8 @@
 var sys = require('sys');
 var http = require('http');
 
+var CSF_TRACE = process.ENV.CSF_TRACE;
+
 // ---------------------
 // handlePathPrefixArray
 
@@ -204,10 +206,10 @@ startHandler = function(handler, port, opt_host) {
  * @param {Object} opt_host
  */
 startPathHandlers = function(pathPrefixHandlers, port, opt_host) {
-  var rootHandler = createHandlerChain([
-      createAroundInterceptor(dumpRequest, dumpResponse),
-      handlePathPrefixArray.create(pathPrefixHandlers)
-  ]);
+  var pathHandlers = handlePathPrefixArray.create(pathPrefixHandlers);
+  var rootHandler = CSF_TRACE ? createHandlerChain([
+      createAroundInterceptor(dumpRequest, dumpResponse), pathHandlers]) :
+      pathHandlers;
   startHandler(rootHandler, port, opt_host);
 };
 
