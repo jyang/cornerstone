@@ -27,13 +27,23 @@ message.__response
 
 MESSAGE HANDLER (Function)
 
-A message handler (or simply handler) takes a request message (and an optional handler to intercept) and returns a future of a response message.
+A message handler (or simply handler) is an asynchronous function that takes a request message and a response handler function and calls the response handler on response message produced.
 
-function handleSomething(request) {
+function handleNoOp(request, handleResponse) {
   var response = {output: {body: ''}, status: 200};
-  return response;
+  handleResponse(response);
 };
 
-function interceptNextHandler(request, nextHandler) {
-  return nextHandler(request);
+A handler can also intercept another handler, in which case it takes an extra parameter of the intercepted handler.
+
+function interceptNoOp(request, handleResponse, intercepted) {
+  intercepted(request, handleResponse);
+};
+
+MESSAGE FILTER (Function)
+
+A filter is a synchronous function that processes either the request or response message.
+
+function filterNoOp(request) {
+  return request;
 };

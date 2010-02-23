@@ -66,7 +66,7 @@ createHandlerChain = function(handlers) {
   }
 };
 
-createAroundInterceptor = function(before, after) {
+createAroundFilter = function(before, after) {
   return function(request, handleResponse, intercepted) {
     intercepted(before(request), function(response) {
       handleResponse(after(response));
@@ -74,13 +74,13 @@ createAroundInterceptor = function(before, after) {
   };
 };
 
-createBeforeInterceptor = function(before) {
+createBeforeFilter = function(before) {
   return function(request, handleResponse, intercepted) {
     intercepted(before(request), handleResponse);
   };
 };
 
-createAfterInterceptor = function(after) {
+createAfterFilter = function(after) {
   return function(request, handleResponse, intercepted) {
     intercepted(request, function(response) {
       handleResponse(after(response));
@@ -128,6 +128,12 @@ function log(message) {
   sys.puts(toIsoDateString(new Date()) + ' ' + message);
 };
 
+function output(status, message, opt_headers) {
+  return {output: {body: message}, status: status, headers: opt_headers};
+}
+
+// filters
+
 function dumpRequest(request){
   log('request: ' + sys.inspect(request));
   return request;
@@ -137,10 +143,6 @@ function dumpResponse(response) {
   log('response: ' + sys.inspect(response));
   return response;
 };
-
-function output(status, message, opt_headers) {
-  return {output: {body: message}, status: status, headers: opt_headers};
-}
 
 // ----
 // Node
@@ -159,7 +161,7 @@ startHandler = function(handler, port, opt_host) {
     var start = Date.now();
 
     var chain = createHandlerChain([
-      createBeforeInterceptor(function(request) {
+      createBeforeFilter(function(request) {
         var requestUrl = require('url').parse(request.url, true);
         return {
           header: request.headers,
@@ -208,7 +210,7 @@ startHandler = function(handler, port, opt_host) {
 startPathHandlers = function(pathPrefixHandlers, port, opt_host) {
   var pathHandlers = handlePathPrefixArray.create(pathPrefixHandlers);
   var rootHandler = CSF_TRACE ? createHandlerChain([
-      createAroundInterceptor(dumpRequest, dumpResponse), pathHandlers]) :
+      createAroundFilter(dumpRequest, dumpResponse), pathHandlers]) :
       pathHandlers;
   startHandler(rootHandler, port, opt_host);
 };
@@ -217,16 +219,16 @@ startPathHandlers = function(pathPrefixHandlers, port, opt_host) {
 // exports
 
 exports.handler = {
-  dumpRequest: dumpRequest,
-  dumpResponse: dumpResponse,
   handlePathPrefixArray: handlePathPrefixArray,
   chain: createHandlerChain
 };
 
-exports.interceptor = {
-  around: createAroundInterceptor,
-  before: createBeforeInterceptor,
-  after: createAfterInterceptor
+exports.filter = {
+  around: createAroundFilter,
+  before: createBeforeFilter,
+  after: createAfterFilter,
+  dumpRequest: dumpRequest,
+  dumpResponse: dumpResponse
 };
 
 exports.server = {
