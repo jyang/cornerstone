@@ -19,6 +19,7 @@ message.input
 message.input.url
 message.input.path
 message.input.body
+message.input.pathPrefix 
 message.output
 message.output.body
 message.status
